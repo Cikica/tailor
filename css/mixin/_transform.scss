@@ -1,0 +1,7 @@
+@mixin transform ($property) {
+
+	-moz-transform    : $property;
+	-webkit-transform : $property;
+	-o-transform      : $property;
+	-ms-transform     : $property;
+};

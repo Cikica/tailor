@@ -1,0 +1,52 @@
+body {
+	margin: 0;
+}
+
+.tailor_peek { 
+	position    : absolute;
+	height      : 100%;
+	width       : 20px;
+	float       : left;
+	background  : #222;
+	cursor      : pointer;
+	// left        : -20px;	
+	@include transform(translateX(-20px));
+	// -webkit-animation-duration : 500ms;
+	// -webkit-animation-name     : show_tailor_peek;
+}
+
+.tailor { 
+	float: left;
+	// animation-duration         : 700ms;
+	// animation-name             : some;
+	// animation-delay            : 50ms;
+	// -webkit-animation-duration : 700ms;
+	// -webkit-animation-delay    : 50ms;
+	// -webkit-animation-name     : some;
+}
+
+@include keyframes(show_tailor_peek) {
+	
+	from {
+		@include transform(translateX(-20px));
+		// left : -20px;
+	}
+
+	to {
+		@include transform(translateX(0px));
+		// left : 0px;
+	}
+}
+
+@include keyframes(hide_tailor_peek) {
+	
+	from {
+		@include transform(translateX(0px));
+		// left : 0px;
+	}
+
+	to {
+		@include transform(translateX(-20px));
+		// left : -20px;
+	}
+}
