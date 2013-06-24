@@ -23,7 +23,14 @@ define(function () {
 		tail.instructions = {
 			move    : false,
 			moving  : false,
-			showing : false
+			showing : false,
+			array   : [],
+			object  : {
+				level_one : "stuff",
+				level_two : {
+					level_one : "stuff"
+				}
+			}
 		};
 
 		new this.set_animation({
@@ -49,11 +56,23 @@ define(function () {
 			support_checks : ["transform"]
 		});
 
+		// new this.observe(tail.instructions, "array", function (change) {
+		// 	console.log("showing");
+		// });
+
+		new this.observe({
+			object   : tail.instructions, 
+			property : "showing", 
+			observer : function (change) {
+				console.log(change.new_value);
+			}
+		});
+
 		window.addEventListener("mousemove", function (event) {
 
 			if ( event.clientX < 20 && !wait_before_the_tail_peeks ) {
 				wait_before_the_tail_peeks = setTimeout(function () {
-					tail.instructions.showing = true;
+					tail.instructions.showing = "showing";
 					tail.animate(500, "show_tailor_peek");
 				}, 600);
 			}
@@ -61,14 +80,17 @@ define(function () {
 			if ( event.clientX > 20 ) {
 				if ( wait_before_the_tail_peeks ) clearTimeout( wait_before_the_tail_peeks );
 				if ( tail.instructions.showing  ) tail.animate(500, "hide_tailor_peek");
-				if ( tail.instructions.showing  ) tail.instructions.showing = false;
+				// if ( tail.instructions.showing  ) tail.instructions.showing = false;
 				wait_before_the_tail_peeks = false;
 			}
-
 		});
 
 		this.tail.addEventListener("click", function () { 
-			alert("open Seaseame");
+			// tail.instructions.move = true;
+			tail.instructions.object.level_one = "level_one";
+			tail.instructions.object.level_two.level_one = "level two > level one";
+			// tail.instructions.array.push_and_observe("stuff");
+			// console.log(tail.instructions.array);
 		});
 	};
 
@@ -154,6 +176,114 @@ define(function () {
 			}
 			this.element.style[property] = property_value;
 		}
+	};
+
+	tailor.prototype.observe = function (paramaters) {
+
+		if ( paramaters.object.constructor !== Object ) throw new Error("An object was not passed as the object paramater of the observer function");
+		this.subject  = paramaters.object;
+		this.observer = paramaters.observer;
+		this.property = paramaters.property || "all";
+		this.value    = ( paramaters.property ? this.subject[this.property] : this.subject );
+		var  self     = this;
+
+		if ( !this.subject.observers ) {
+			Object.defineProperty(this.subject, "observers", {
+				configurable : true,
+				enumerable   : false, 
+				writable     : false, 
+				value        : {}
+			});
+		}
+
+		if (!this.subject.observers[this.property]) {
+			this.subject.observers[this.property] = [];
+		}
+
+		for ( var index in this.subject.observers[this.property] ) { 
+			if ( this.subject.observers[this.property][index] === this.observer ) return;
+		}
+
+		this.subject.observers[this.property].push(this.observer);
+
+		if ( this.property === "all" ) {
+			this.set_observers_for_entire_object(this.subject);
+		} else { 
+			this.set_an_observer(this.subject, this.property, this.property);
+		}
+
+
+		// // for ( var part in object ) {
+		// 	Object.defineProperty(object[property], "push_and_observe", {
+		// 		configurable : true,
+		// 		enumerable   : false, 
+		// 		writable     : false, 
+		// 		value        : function (value) {
+		// 			object[property].push(value);
+		// 			for (var observer in object.observers[property] ) {
+		// 				object.observers[property][observer]({
+		// 					object    : object,
+		// 					new_value : value
+		// 				});
+		// 			}
+		// 		}
+		// 	});
+		// }
+	};
+
+	tailor.prototype.observe.prototype.set_observers_for_entire_object = function (object) {
+		
+		for ( var property in object ) {
+			
+			this.set_an_observer(object, property, "all");
+
+			if ( object[property].constructor === Object ) {
+				this.set_observers_for_entire_object(object[property]);
+			}
+		}
+	};
+
+	tailor.prototype.observe.prototype.set_an_observer = function (object, property, call_property) {
+
+		var old_value, new_value, self;
+
+		self      = this;
+		new_value = object[property];
+
+		Object.defineProperty(object, property, {
+			enumerable   : true,
+			configurable : true,
+			get       	 : function () {
+				return new_value;
+			},
+			set          : function (set_value) {
+
+				old_value = new_value;
+				new_value = set_value;
+
+				for (var observer in self.subject.observers[call_property] ) {
+					self.subject.observers[call_property][observer]({
+						old_value : old_value,
+						new_value : new_value,
+						object    : object
+					});
+				}	
+			}
+		});
+	};
+
+	tailor.prototype.observe.prototype.make_array_observable = function (object, array) {
+		
+		Object.defineProperty(array, "push", {
+			configurable : true,
+			enumerable   : false, 
+			writable     : false, 
+			value        : function (push_value) {
+
+				var push = Array.prototype.push;
+				push.call( array , push_value);
+			}
+		});
 	};
 
 	tailor.prototype.bind_touch_listener_for_opening_the_window = function () {
