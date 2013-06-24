@@ -62,9 +62,9 @@ define(function () {
 
 		new this.observe({
 			object   : tail.instructions, 
-			property : "showing", 
+			property : "array", 
 			observer : function (change) {
-				console.log(change.new_value);
+				console.log(change);
 			}
 		});
 
@@ -87,6 +87,12 @@ define(function () {
 
 		this.tail.addEventListener("click", function () { 
 			// tail.instructions.move = true;
+			tail.instructions.array.push("push");
+			tail.instructions.array.unshift("unshift");
+			tail.instructions.array.push("push2");
+			tail.instructions.array.shift();
+			tail.instructions.array.pop();
+			tail.instructions.array = ["stuff"];
 			tail.instructions.object.level_one = "level_one";
 			tail.instructions.object.level_two.level_one = "level two > level one";
 			// tail.instructions.array.push_and_observe("stuff");
@@ -211,24 +217,6 @@ define(function () {
 		} else { 
 			this.set_an_observer(this.subject, this.property, this.property);
 		}
-
-
-		// // for ( var part in object ) {
-		// 	Object.defineProperty(object[property], "push_and_observe", {
-		// 		configurable : true,
-		// 		enumerable   : false, 
-		// 		writable     : false, 
-		// 		value        : function (value) {
-		// 			object[property].push(value);
-		// 			for (var observer in object.observers[property] ) {
-		// 				object.observers[property][observer]({
-		// 					object    : object,
-		// 					new_value : value
-		// 				});
-		// 			}
-		// 		}
-		// 	});
-		// }
 	};
 
 	tailor.prototype.observe.prototype.set_observers_for_entire_object = function (object) {
@@ -244,6 +232,8 @@ define(function () {
 	};
 
 	tailor.prototype.observe.prototype.set_an_observer = function (object, property, call_property) {
+
+		if ( object[property].constructor === Array ) this.make_array_mutators_trigger_the_observer( object, property);
 
 		var old_value, new_value, self;
 
@@ -272,18 +262,44 @@ define(function () {
 		});
 	};
 
-	tailor.prototype.observe.prototype.make_array_observable = function (object, array) {
+	tailor.prototype.observe.prototype.make_array_mutators_trigger_the_observer = function (object, array_name) {
 		
-		Object.defineProperty(array, "push", {
-			configurable : true,
-			enumerable   : false, 
-			writable     : false, 
-			value        : function (push_value) {
+		var old_value, new_value, self, mutators, mutator_agument;
 
-				var push = Array.prototype.push;
-				push.call( array , push_value);
-			}
-		});
+		mutators  = {
+			push      : Array.prototype.push,
+			pop       : Array.prototype.pop,
+			shift     : Array.prototype.shift,
+			unshift   : Array.prototype.unshift
+		};
+		self            = this;
+		new_value       = object[array_name].slice(0);
+		mutator_agument = function (mutator_name, arguments) {
+
+			Object.defineProperty(object[array_name], mutator_type, {
+				configurable : true,
+				enumerable   : false, 
+				writable     : false, 
+				value        : function (argument) {
+
+					mutators[mutator_name].call( object[array_name], arguments);
+					old_value = new_value;
+					new_value = object[array_name].slice(0);
+
+					for (var observer in self.subject.observers[array_name] ) {
+						self.subject.observers[array_name][observer]({
+							old_value : old_value,
+							new_value : new_value,
+							object    : object
+						});
+					}
+				}
+			});
+		};
+
+		for ( var mutator_type in mutators ) {
+			mutator_agument(mutator_type);
+		}
 	};
 
 	tailor.prototype.bind_touch_listener_for_opening_the_window = function () {
