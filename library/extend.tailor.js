@@ -24,7 +24,9 @@ define(function () {
 			move    : false,
 			moving  : false,
 			showing : false,
-			array   : [],
+			arayios : {
+				array   : [],
+			},
 			object  : {
 				level_one : "stuff",
 				level_two : {
@@ -62,7 +64,7 @@ define(function () {
 
 		new this.observe({
 			object   : tail.instructions, 
-			property : "array", 
+			// property : "array", 
 			observer : function (change) {
 				console.log(change);
 			}
@@ -89,10 +91,11 @@ define(function () {
 			// tail.instructions.move = true;
 			tail.instructions.array.push("push");
 			tail.instructions.array.unshift("unshift");
-			tail.instructions.array.push("push2");
-			tail.instructions.array.shift();
-			tail.instructions.array.pop();
+			tail.instructions.array.push("push2", "push3");
+			tail.instructions.array.splice(1, 2, "new element", "another new", "even newer");
 			tail.instructions.array = ["stuff"];
+			// tail.instructions.array.shift();
+			// tail.instructions.array.pop();
 			tail.instructions.object.level_one = "level_one";
 			tail.instructions.object.level_two.level_one = "level two > level one";
 			// tail.instructions.array.push_and_observe("stuff");
@@ -253,9 +256,10 @@ define(function () {
 
 				for (var observer in self.subject.observers[call_property] ) {
 					self.subject.observers[call_property][observer]({
-						old_value : old_value,
-						new_value : new_value,
-						object    : object
+						old_value     : old_value,
+						new_value     : new_value,
+						object        : object,
+						property_name : property
 					});
 				}	
 			}
@@ -264,33 +268,37 @@ define(function () {
 
 	tailor.prototype.observe.prototype.make_array_mutators_trigger_the_observer = function (object, array_name) {
 		
-		var old_value, new_value, self, mutators, mutator_agument;
+		var old_value, new_value, self, mutators, mutator_agument, call_name;
 
 		mutators  = {
 			push      : Array.prototype.push,
 			pop       : Array.prototype.pop,
 			shift     : Array.prototype.shift,
-			unshift   : Array.prototype.unshift
+			unshift   : Array.prototype.unshift,
+			splice    : Array.prototype.splice,
 		};
 		self            = this;
+		call_name       = ( this.property === "all" ? "all" : array_name );
 		new_value       = object[array_name].slice(0);
-		mutator_agument = function (mutator_name, arguments) {
+		mutator_agument = function (mutator_name) {
 
 			Object.defineProperty(object[array_name], mutator_type, {
 				configurable : true,
 				enumerable   : false, 
 				writable     : false, 
-				value        : function (argument) {
+				value        : function () {
 
-					mutators[mutator_name].call( object[array_name], arguments);
+					mutators[mutator_name].apply( object[array_name], arguments );
+
 					old_value = new_value;
 					new_value = object[array_name].slice(0);
 
-					for (var observer in self.subject.observers[array_name] ) {
-						self.subject.observers[array_name][observer]({
-							old_value : old_value,
-							new_value : new_value,
-							object    : object
+					for (var observer in self.subject.observers[call_name] ) {
+						self.subject.observers[call_name][observer]({
+							old_value     : old_value,
+							new_value     : new_value,
+							object        : object,
+							property_name : array_name
 						});
 					}
 				}
